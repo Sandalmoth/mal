@@ -46,6 +46,16 @@ pub const Reader = struct {
         // }
 
         return try rdr.readForm();
+        // i don't think the below is right...
+        // const token = rdr.peek();
+        // if (rdr.tokens.items.len <= 1 or token.type == .l_paren) {
+        //     return try rdr.readForm();
+        // } else {
+        //     // many statements at root are in a list by default
+        //     try rdr.tokens.insert(0, Token{ .type = .l_paren, .data = "(" });
+        //     try rdr.tokens.append(Token{ .type = .r_paren, .data = ")" });
+        //     return try rdr.readForm();
+        // }
     }
 
     pub fn free(rdr: *Reader) void {
@@ -71,6 +81,12 @@ pub const Reader = struct {
         if (token.type == .l_paren) {
             rdr.cursor += 1; // ignore the parenthesis
             return try rdr.readList();
+        } else if (token.type == .l_brack) {
+            rdr.cursor += 1; // ignore the parenthesis
+            return try rdr.readVector();
+        } else if (token.type == .l_curly) {
+            rdr.cursor += 1; // ignore the parenthesis
+            return try rdr.readDict();
         } else {
             return rdr.readAtom();
         }
@@ -101,6 +117,56 @@ pub const Reader = struct {
         return list;
     }
 
+    pub fn readVector(rdr: *Reader) anyerror!MalType {
+        var vector = MalType{
+            .vector = std.ArrayList(MalType).init(rdr.alloc),
+        };
+
+        var matched = false;
+        while (rdr.cursor < rdr.tokens.items.len) {
+            const token = rdr.peek();
+            // std.debug.print("list {}\t{s}\n", .{ token.type, token.data });
+            if (token.type == .r_brack) {
+                rdr.cursor += 1;
+                matched = true;
+                break;
+            }
+            vector.vector.append(try rdr.readForm()) catch unreachable;
+        }
+
+        if (!matched) {
+            return error.UnmatchedBracket;
+            // std.debug.panic("unmatched parenthesis\n", .{});
+        }
+
+        return vector;
+    }
+
+    pub fn readDict(rdr: *Reader) anyerror!MalType {
+        var dict = MalType{
+            .dict = std.ArrayList(MalType).init(rdr.alloc),
+        };
+
+        var matched = false;
+        while (rdr.cursor < rdr.tokens.items.len) {
+            const token = rdr.peek();
+            // std.debug.print("list {}\t{s}\n", .{ token.type, token.data });
+            if (token.type == .r_curly) {
+                rdr.cursor += 1;
+                matched = true;
+                break;
+            }
+            dict.dict.append(try rdr.readForm()) catch unreachable;
+        }
+
+        if (!matched) {
+            return error.UnmatchedBracket;
+            // std.debug.panic("unmatched parenthesis\n", .{});
+        }
+
+        return dict;
+    }
+
     pub fn readAtom(rdr: *Reader) MalType {
         const token = rdr.next();
         // std.debug.print("atom {}\t{s}\n", .{ token.type, token.data });
@@ -121,6 +187,24 @@ pub const Reader = struct {
             },
             .string => {
                 return MalType{ .string = rdr.alloc.dupe(u8, token.data[1 .. token.data.len - 1]) catch unreachable };
+            },
+            .quote => {
+                return MalType{ .quote = {} };
+            },
+            .grave => {
+                return MalType{ .quasiquote = {} };
+            },
+            .tilde => {
+                return MalType{ .unquote = {} };
+            },
+            .snail => {
+                return MalType{ .splice_unquote = {} };
+            },
+            .at => {
+                return MalType{ .deref = {} };
+            },
+            .hat => {
+                return MalType{ .with_meta = {} };
             },
             else => {
                 // NOTE this is probably not correct

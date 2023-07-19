@@ -9,6 +9,15 @@ pub const MalTypeType = enum {
     nil,
     true,
     false,
+    keyword,
+    vector,
+    dict,
+    quote,
+    quasiquote,
+    unquote,
+    splice_unquote,
+    deref,
+    with_meta,
 };
 pub const MalType = union(MalTypeType) {
     list: std.ArrayList(MalType),
@@ -19,4 +28,13 @@ pub const MalType = union(MalTypeType) {
     nil: void,
     true: void,
     false: void,
+    keyword: []u8,
+    vector: std.ArrayList(MalType),
+    dict: std.ArrayList(MalType), // to preserve order
+    quote: void,
+    quasiquote: void,
+    unquote: void,
+    splice_unquote: void,
+    deref: void,
+    with_meta: void,
 };
