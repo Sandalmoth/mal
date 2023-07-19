@@ -73,6 +73,13 @@ pub const Reader = struct {
     }
 
     pub fn readForm(rdr: *Reader) anyerror!MalType {
+
+        // somehow:
+        // quote, quasiquote, unquote, splice_unquote and deref,
+        // should produce a list of themselves and the thing after
+        // while with_meta should produce a list
+        // of itself and the two following things
+
         // mutual recursion breaks inferred error sets
         // so just assume we never have errors here...
         // std.debug.print("cursor at {}\n", .{rdr.cursor});
@@ -87,6 +94,10 @@ pub const Reader = struct {
         } else if (token.type == .l_curly) {
             rdr.cursor += 1; // ignore the parenthesis
             return try rdr.readDict();
+        } else if (token.type == .quote or token.type == .grave or token.type == .tilde or token.type == .snail or token.type == .at) {
+            return try rdr.readTransientList(2);
+        } else if (token.type == .hat) {
+            return try rdr.readTransientList(3);
         } else {
             return rdr.readAtom();
         }
@@ -165,6 +176,35 @@ pub const Reader = struct {
         }
 
         return dict;
+    }
+
+    pub fn readTransientList(rdr: *Reader, n: usize) anyerror!MalType {
+        // blocks the following n things into a list
+        var list = MalType{
+            .list = std.ArrayList(MalType).init(rdr.alloc),
+        };
+
+        list.list.append(rdr.readAtom()) catch unreachable;
+
+        var i: usize = 1;
+        while (i < n and rdr.cursor < rdr.tokens.items.len) : (i += 1) {
+            list.list.append(try rdr.readForm()) catch unreachable;
+        }
+
+        if (i != n) {
+            return error.MissingOperands;
+            // std.debug.panic("unmatched parenthesis\n", .{});
+        }
+
+        // only for with-meta
+        // and in that case, operands should be swapped
+        if (n == 3) {
+            const tmp = list.list.items[1];
+            list.list.items[1] = list.list.items[2];
+            list.list.items[2] = tmp;
+        }
+
+        return list;
     }
 
     pub fn readAtom(rdr: *Reader) MalType {
