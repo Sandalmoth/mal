@@ -155,8 +155,15 @@ pub const Environment = struct {
                 var new_dict = MalType{
                     .dict = std.ArrayList(MalType).init(arena),
                 };
+                var i: u32 = 0;
                 for (dict.items) |item| {
-                    try new_dict.dict.append(try env.eval(item, arena));
+                    // for a dict, only eval values, not keys
+                    if (i % 2 == 1) {
+                        try new_dict.dict.append(try env.eval(item, arena));
+                    } else {
+                        try new_dict.dict.append(item);
+                    }
+                    i += 1;
                 }
                 return new_dict;
             },
