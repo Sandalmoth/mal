@@ -34,11 +34,13 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(exe);
     }
 
-    // const run_cmd = b.addRunArtifact(exe);
-    // run_cmd.step.dependOn(b.getInstallStep());
-    // if (b.args) |args| {
-    //     run_cmd.addArgs(args);
-    // }
-    // const run_step = b.step("run", "Run the app");
-    // run_step.dependOn(&run_cmd.step);
+    {
+        const exe = b.addExecutable(.{
+            .name = "step3_env",
+            .root_source_file = .{ .path = "src/step3_env/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        b.installArtifact(exe);
+    }
 }
