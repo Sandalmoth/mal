@@ -57,7 +57,9 @@ pub const Environment = struct {
             },
         }
 
-        std.debug.print("{}\n", .{key});
+        if (key == .symbol) {
+            std.debug.print("{s} ", .{key.symbol});
+        }
         return error.NotFound;
     }
 
@@ -151,7 +153,7 @@ pub const Environment = struct {
                                             acc = @divTrunc(acc, item.int);
                                         }
                                     } else {
-                                        std.debug.print("{}\n", .{item});
+                                        // std.debug.print("{}\n", .{item});
                                         return error.OperatorTyping;
                                     }
                                 }

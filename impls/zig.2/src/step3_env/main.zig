@@ -1,5 +1,4 @@
 const std = @import("std");
-
 const _reader = @import("reader.zig");
 const Reader = _reader.Reader;
 
@@ -65,9 +64,13 @@ pub fn main() !void {
         try stdout.writer().print("user> ", .{});
         const input = try stdin.reader().readUntilDelimiter(&input_buffer, '\n');
         mal.rep(input) catch |err| {
-            std.debug.print("{}\n", .{err});
+            // std.debug.print("{}\n", .{err});
             // probably print different errors depending on error here
-            try stdout.writer().print("unbalanced\n", .{});
+            if (err == error.NotFound) {
+                try stdout.writer().print("not found\n", .{});
+            } else {
+                try stdout.writer().print("unbalanced\n", .{});
+            }
         };
     }
 
