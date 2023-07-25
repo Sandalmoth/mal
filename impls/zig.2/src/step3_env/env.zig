@@ -89,7 +89,37 @@ pub const Environment = struct {
                     env.set(list.items[1], val);
                     return val; // NOTE is this the expected behaviour?
                 }
-                // TODO let?
+                if (list.items[0] == .symbol and std.mem.eql(u8, list.items[0].symbol, "let*")) {
+                    // TODO
+                    var new_env = Environment{
+                        .alloc = env.alloc,
+                        .symbol_table = std.StringHashMap(MalType).init(env.alloc),
+                        .outer = env,
+                    };
+                    if (list.items[1] == .list) {
+                        std.debug.assert(list.items[1].list.items.len % 2 == 0);
+                        var i: usize = 0;
+                        while (i < list.items[1].list.items.len) : (i += 2) {
+                            new_env.set(
+                                list.items[1].list.items[i],
+                                try new_env.eval(list.items[1].list.items[i + 1], arena),
+                            );
+                        }
+                        return try new_env.eval(list.items[2], arena);
+                    } else if (list.items[1] == .vector) {
+                        std.debug.assert(list.items[1].vector.items.len % 2 == 0);
+                        var i: usize = 0;
+                        while (i < list.items[1].vector.items.len) : (i += 2) {
+                            new_env.set(
+                                list.items[1].vector.items[i],
+                                try new_env.eval(list.items[1].vector.items[i + 1], arena),
+                            );
+                        }
+                        return try new_env.eval(list.items[2], arena);
+                    } else {
+                        return error.BadLet;
+                    }
+                }
                 // function!
                 const new_list = try env.eval_ast(root, arena);
                 // wow this turned awful fast huh
