@@ -16,6 +16,7 @@ pub const Environment = struct {
             .outer = null,
         };
 
+        // we could also use set, but whatever
         try env.symbol_table.put("+", MalType{ .intrinsic = .plus });
         try env.symbol_table.put("-", MalType{ .intrinsic = .minus });
         try env.symbol_table.put("*", MalType{ .intrinsic = .mul });
@@ -30,9 +31,14 @@ pub const Environment = struct {
 
     pub fn set(env: *Environment, key: MalType, value: MalType) void {
         // add to symbol tabble
-        _ = key;
-        _ = value;
-        _ = env;
+        switch (key) {
+            .symbol => |symbol| {
+                env.symbol_table.put(env.alloc.dupe(u8, symbol) catch unreachable, value) catch unreachable;
+            },
+            else => {
+                @panic("only symbols can be symbols");
+            },
+        }
     }
 
     pub fn get(env: *Environment, key: MalType) !MalType {
@@ -43,7 +49,7 @@ pub const Environment = struct {
                 // well this doesn't work, the symbol table needs to hold maltypes
                 // and then maltypes need to be able to be .intrinsic?
                 if (env.find(symbol)) |e| {
-                    return e;
+                    return e.symbol_table.get(symbol).?;
                 }
             },
             else => {
@@ -51,6 +57,7 @@ pub const Environment = struct {
             },
         }
 
+        std.debug.print("{}\n", .{key});
         return error.NotFound;
     }
 
@@ -73,6 +80,14 @@ pub const Environment = struct {
                 if (list.items.len == 0) {
                     return root;
                 }
+                // apply section is here?
+                if (list.items[0] == .symbol and std.mem.eql(u8, list.items[0].symbol, "def!")) {
+                    // const val = try env.eval_ast(list.items[2], arena); // eval or eval_ast?
+                    const val = try env.eval(list.items[2], arena); // eval or eval_ast?
+                    env.set(list.items[1], val);
+                    return val; // NOTE is this the expected behaviour?
+                }
+                // TODO let?
                 // function!
                 const new_list = try env.eval_ast(root, arena);
                 // wow this turned awful fast huh
@@ -81,60 +96,7 @@ pub const Environment = struct {
                         .symbol => |symbol| {
                             if (env.symbol_table.get(symbol)) |val| {
                                 switch (val) {
-                                    .intrinsic => |intrinsic| {
-                                        if (intrinsic == .plus) {
-                                            var acc: i64 = 0;
-                                            for (new_list.list.items[1..]) |item| {
-                                                if (item == MalType.int) {
-                                                    acc += item.int;
-                                                } else {
-                                                    return error.OperatorTyping;
-                                                }
-                                            }
-                                            return MalType{ .int = acc };
-                                        } else if (intrinsic == .minus) {
-                                            var acc: i64 = undefined;
-                                            for (new_list.list.items[1..], 0..) |item, i| {
-                                                if (item == MalType.int) {
-                                                    if (i == 0) {
-                                                        acc = item.int;
-                                                    } else {
-                                                        acc -= item.int;
-                                                    }
-                                                } else {
-                                                    return error.OperatorTyping;
-                                                }
-                                            }
-                                            return MalType{ .int = acc };
-                                        } else if (intrinsic == .mul) {
-                                            var acc: i64 = 1;
-                                            for (new_list.list.items[1..]) |item| {
-                                                if (item == MalType.int) {
-                                                    acc *= item.int;
-                                                } else {
-                                                    return error.OperatorTyping;
-                                                }
-                                            }
-                                            return MalType{ .int = acc };
-                                        } else if (intrinsic == .div) {
-                                            var acc: i64 = undefined;
-                                            for (new_list.list.items[1..], 0..) |item, i| {
-                                                if (item == MalType.int) {
-                                                    if (i == 0) {
-                                                        acc = item.int;
-                                                    } else {
-                                                        acc = @divTrunc(acc, item.int);
-                                                    }
-                                                } else {
-                                                    std.debug.print("{}\n", .{item});
-                                                    return error.OperatorTyping;
-                                                }
-                                            }
-                                            return MalType{ .int = acc };
-                                        } else {
-                                            return error.UnimplementedIntrinsic;
-                                        }
-                                    },
+                                    .intrinsic => {},
                                     else => {
                                         return error.SymbolNotComputable;
                                     },
@@ -144,7 +106,62 @@ pub const Environment = struct {
                                 return error.UnknownSymbol;
                             }
                         },
+                        .intrinsic => |intrinsic| {
+                            if (intrinsic == .plus) {
+                                var acc: i64 = 0;
+                                for (new_list.list.items[1..]) |item| {
+                                    if (item == MalType.int) {
+                                        acc += item.int;
+                                    } else {
+                                        return error.OperatorTyping;
+                                    }
+                                }
+                                return MalType{ .int = acc };
+                            } else if (intrinsic == .minus) {
+                                var acc: i64 = undefined;
+                                for (new_list.list.items[1..], 0..) |item, i| {
+                                    if (item == MalType.int) {
+                                        if (i == 0) {
+                                            acc = item.int;
+                                        } else {
+                                            acc -= item.int;
+                                        }
+                                    } else {
+                                        return error.OperatorTyping;
+                                    }
+                                }
+                                return MalType{ .int = acc };
+                            } else if (intrinsic == .mul) {
+                                var acc: i64 = 1;
+                                for (new_list.list.items[1..]) |item| {
+                                    if (item == MalType.int) {
+                                        acc *= item.int;
+                                    } else {
+                                        return error.OperatorTyping;
+                                    }
+                                }
+                                return MalType{ .int = acc };
+                            } else if (intrinsic == .div) {
+                                var acc: i64 = undefined;
+                                for (new_list.list.items[1..], 0..) |item, i| {
+                                    if (item == MalType.int) {
+                                        if (i == 0) {
+                                            acc = item.int;
+                                        } else {
+                                            acc = @divTrunc(acc, item.int);
+                                        }
+                                    } else {
+                                        std.debug.print("{}\n", .{item});
+                                        return error.OperatorTyping;
+                                    }
+                                }
+                                return MalType{ .int = acc };
+                            } else {
+                                return error.UnimplementedIntrinsic;
+                            }
+                        },
                         else => {
+                            std.debug.print("{}\n", .{new_list.list.items[0]});
                             @panic("yeah...");
                         },
                     }
@@ -162,13 +179,16 @@ pub const Environment = struct {
     pub fn eval_ast(env: *Environment, root: MalType, arena: std.mem.Allocator) !MalType {
         switch (root) {
             .symbol => |symbol| {
-                if (env.symbol_table.get(symbol)) |val| {
-                    if (val == .intrinsic) {
-                        return root;
-                    }
-                    @panic("no symbols implemented yet");
-                }
-                return error.UnknownSymbol;
+                _ = symbol;
+                // if (env.symbol_table.get(symbol)) |val| {
+                const val = try env.get(root);
+                return val;
+                // if (val == .intrinsic) {
+                // return root;
+                // }
+                // @panic("we cant get here right?");
+                // }
+                // return error.UnknownSymbol;
             },
             .list => |list| {
                 var new_list = MalType{
