@@ -88,6 +88,9 @@ pub fn print(out: std.fs.File, node: MalType) !void {
                 .div => {
                     try out.writer().print("/", .{});
                 },
+                else => {
+                    try out.writer().print("another intrinsic...", .{});
+                },
             }
         },
         .closure => |closure| {

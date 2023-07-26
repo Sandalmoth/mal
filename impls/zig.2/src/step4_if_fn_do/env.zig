@@ -3,25 +3,24 @@ const std = @import("std");
 const _ast = @import("ast.zig");
 const MalType = _ast.MalType;
 
+const _printer = @import("printer.zig");
+
 pub const Environment = struct {
     alloc: std.mem.Allocator,
     symbol_table: std.StringHashMap(MalType), // probably a useful abstraction for the future?
+    out: std.fs.File, // awkward, but oh well we need print
 
     outer: ?*Environment,
 
-    pub fn init(alloc: std.mem.Allocator) !Environment {
+    pub fn init(alloc: std.mem.Allocator, out: std.fs.File) !Environment {
         var env = Environment{
             .alloc = alloc,
             .symbol_table = std.StringHashMap(MalType).init(alloc),
             .outer = null,
+            .out = out,
         };
 
         // we could also use set, but whatever
-        try env.symbol_table.put("+", MalType{ .intrinsic = .plus });
-        try env.symbol_table.put("-", MalType{ .intrinsic = .minus });
-        try env.symbol_table.put("*", MalType{ .intrinsic = .mul });
-        try env.symbol_table.put("/", MalType{ .intrinsic = .div });
-
         return env;
     }
 
@@ -92,6 +91,7 @@ pub const Environment = struct {
                         .alloc = env.alloc,
                         .symbol_table = std.StringHashMap(MalType).init(env.alloc),
                         .outer = env,
+                        .out = env.out,
                     };
                     if (list.items[1] == .list) {
                         std.debug.assert(list.items[1].list.items.len % 2 == 0);
@@ -221,6 +221,82 @@ pub const Environment = struct {
                                     }
                                 }
                                 return MalType{ .int = acc };
+                            } else if (intrinsic == .prn) {
+                                try _printer.print(env.out, new_list.list.items[1]);
+                                try env.out.writer().print("\n", .{});
+                                return MalType{ .nil = {} };
+                            } else if (intrinsic == .list) {
+                                var result = MalType{
+                                    .list = std.ArrayList(MalType).init(env.alloc),
+                                };
+                                for (new_list.list.items[1..]) |item| {
+                                    try result.list.append(item);
+                                }
+                                return result;
+                            } else if (intrinsic == .islist) {
+                                if (new_list.list.items[1] == .list) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
+                            } else if (intrinsic == .isempty) {
+                                if (new_list.list.items[1] == .list) {
+                                    if (new_list.list.items[1].list.items.len > 0) {
+                                        return MalType{ .false = {} };
+                                    } else {
+                                        return MalType{ .true = {} };
+                                    }
+                                } else {
+                                    return MalType{ .nil = {} };
+                                }
+                            } else if (intrinsic == .count) {
+                                if (new_list.list.items[1] == .list) {
+                                    return MalType{ .int = @intCast(i64, new_list.list.items[1].list.items.len) };
+                                } else {
+                                    return MalType{ .nil = {} };
+                                }
+                            } else if (intrinsic == .eql) {
+                                const result = _ast.eql(
+                                    new_list.list.items[1],
+                                    new_list.list.items[2],
+                                );
+                                if (result) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
+                            } else if (intrinsic == .lt) {
+                                if (new_list.list.items[1] != .int or new_list.list.items[2] != .int) {
+                                    return error.BadOperatorTyping;
+                                } else if (new_list.list.items[1].int < new_list.list.items[2].int) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
+                            } else if (intrinsic == .leq) {
+                                if (new_list.list.items[1] != .int or new_list.list.items[2] != .int) {
+                                    return error.BadOperatorTyping;
+                                } else if (new_list.list.items[1].int <= new_list.list.items[2].int) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
+                            } else if (intrinsic == .gt) {
+                                if (new_list.list.items[1] != .int or new_list.list.items[2] != .int) {
+                                    return error.BadOperatorTyping;
+                                } else if (new_list.list.items[1].int > new_list.list.items[2].int) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
+                            } else if (intrinsic == .geq) {
+                                if (new_list.list.items[1] != .int or new_list.list.items[2] != .int) {
+                                    return error.BadOperatorTyping;
+                                } else if (new_list.list.items[1].int >= new_list.list.items[2].int) {
+                                    return MalType{ .true = {} };
+                                } else {
+                                    return MalType{ .false = {} };
+                                }
                             } else {
                                 return error.UnimplementedIntrinsic;
                             }
@@ -230,11 +306,10 @@ pub const Environment = struct {
                                 .alloc = env.alloc,
                                 .symbol_table = std.StringHashMap(MalType).init(env.alloc),
                                 .outer = env,
+                                .out = env.out,
                             };
                             for (closure.items[1..], new_list.list.items[1..]) |bind, item| {
-                                std.debug.print("YO", .{});
                                 new_env.set(bind, item);
-                                std.debug.print("DAWG\n", .{});
                             }
                             return try new_env.eval(closure.items[0], arena);
                         },

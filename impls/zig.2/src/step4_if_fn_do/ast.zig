@@ -48,4 +48,37 @@ pub const Intrinsic = enum {
     minus,
     mul,
     div,
+    prn,
+    list,
+    islist,
+    isempty,
+    count,
+    eql,
+    lt,
+    leq,
+    gt,
+    geq,
 };
+
+pub fn eql(a: MalType, b: MalType) bool {
+    // const ta = @enumToInt(a);
+    // const tb = @enumToInt(b);
+
+    // if (ta != tb) {
+    //     return MalType{ .false = {} };
+    // }
+
+    if (a == .list and b == .list) {
+        if (a.list.items.len != b.list.items.len) {
+            return false;
+        }
+
+        var acc = true;
+        for (a.list.items, b.list.items) |x, y| {
+            acc = acc and eql(x, y);
+        }
+        return acc;
+    }
+
+    return std.meta.eql(a, b);
+}

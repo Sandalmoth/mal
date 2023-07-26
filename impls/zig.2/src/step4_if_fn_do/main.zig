@@ -56,8 +56,24 @@ pub fn main() !void {
         .alloc = alloc,
         .arena = arena.allocator(),
         .out = stdout,
-        .env = try Environment.init(alloc),
+        .env = try Environment.init(alloc, stdout),
     };
+
+    try mal.env.symbol_table.put("+", MalType{ .intrinsic = .plus });
+    try mal.env.symbol_table.put("-", MalType{ .intrinsic = .minus });
+    try mal.env.symbol_table.put("*", MalType{ .intrinsic = .mul });
+    try mal.env.symbol_table.put("/", MalType{ .intrinsic = .div });
+    // should these be intrinsics or special forms?
+    try mal.env.symbol_table.put("prn", MalType{ .intrinsic = .prn });
+    try mal.env.symbol_table.put("list", MalType{ .intrinsic = .list });
+    try mal.env.symbol_table.put("list?", MalType{ .intrinsic = .islist });
+    try mal.env.symbol_table.put("empty?", MalType{ .intrinsic = .isempty });
+    try mal.env.symbol_table.put("count", MalType{ .intrinsic = .count });
+    try mal.env.symbol_table.put("=", MalType{ .intrinsic = .eql });
+    try mal.env.symbol_table.put("<", MalType{ .intrinsic = .lt });
+    try mal.env.symbol_table.put("<=", MalType{ .intrinsic = .leq });
+    try mal.env.symbol_table.put(">", MalType{ .intrinsic = .gt });
+    try mal.env.symbol_table.put(">=", MalType{ .intrinsic = .geq });
 
     // try stdout.writeAll("Hello, world!\n");
     // try stdout.writer().print("number: {d}, string: {s}\n", .{ 42, "fourty-two" });
@@ -66,7 +82,7 @@ pub fn main() !void {
         try stdout.writer().print("user> ", .{});
         const input = try stdin.reader().readUntilDelimiter(&input_buffer, '\n');
         mal.rep(input) catch |err| {
-            // std.debug.print("{}\n", .{err});
+            std.debug.print("{}\n", .{err});
             // probably print different errors depending on error here
             if (err == error.NotFound) {
                 try stdout.writer().print("not found\n", .{});
