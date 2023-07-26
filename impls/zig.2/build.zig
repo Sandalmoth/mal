@@ -43,4 +43,14 @@ pub fn build(b: *std.Build) void {
         });
         b.installArtifact(exe);
     }
+
+    {
+        const exe = b.addExecutable(.{
+            .name = "step4_if_fn_do",
+            .root_source_file = .{ .path = "src/step4_if_fn_do/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        b.installArtifact(exe);
+    }
 }
