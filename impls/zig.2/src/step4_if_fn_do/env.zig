@@ -222,7 +222,9 @@ pub const Environment = struct {
                                 }
                                 return MalType{ .int = acc };
                             } else if (intrinsic == .prn) {
-                                try _printer.print(env.out, new_list.list.items[1]);
+                                if (new_list.list.items.len > 1) {
+                                    try _printer.print(env.out, new_list.list.items[1]);
+                                }
                                 try env.out.writer().print("\n", .{});
                                 return MalType{ .nil = {} };
                             } else if (intrinsic == .list) {
@@ -308,8 +310,26 @@ pub const Environment = struct {
                                 .outer = env,
                                 .out = env.out,
                             };
-                            for (closure.items[1..], new_list.list.items[1..]) |bind, item| {
-                                new_env.set(bind, item);
+                            // for (closure.items[1..], new_list.list.items[1..]) |bind, item| {
+                            // new_env.set(bind, item);
+                            // }
+                            var i: usize = 1;
+                            var j: usize = 1;
+                            while (i < closure.items.len and j < new_list.list.items.len) {
+                                if (closure.items[i] == .symbol and std.mem.eql(u8, closure.items[i].symbol, "&")) {
+                                    i += 1;
+                                    // variadic argument
+                                    var varlist = MalType{ .list = std.ArrayList(MalType).init(env.alloc) };
+                                    for (new_list.list.items[j..]) |item| {
+                                        try varlist.list.append(item);
+                                        j += 1;
+                                    }
+                                    new_env.set(closure.items[i], varlist);
+                                } else {
+                                    new_env.set(closure.items[i], new_list.list.items[j]);
+                                    i += 1;
+                                    j += 1;
+                                }
                             }
                             return try new_env.eval(closure.items[0], arena);
                         },
