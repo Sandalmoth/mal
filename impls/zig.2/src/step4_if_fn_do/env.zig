@@ -72,6 +72,23 @@ pub const Environment = struct {
     }
 
     pub fn eval(env: *Environment, root: MalType, arena: std.mem.Allocator) anyerror!MalType {
+        {
+            var kvit = env.symbol_table.iterator();
+            std.debug.print("{}\n", .{root});
+            if (root == .list) {
+                for (root.list.items) |item| {
+                    std.debug.print("  {}\n", .{item});
+                }
+            }
+            try _printer.print(env.out, root);
+            std.debug.print("\n", .{});
+            std.debug.print("{*} {*}\n", .{ env, env.outer });
+            std.debug.print("{{\n", .{});
+            while (kvit.next()) |kv| {
+                std.debug.print("  {s}: {},\n", .{ kv.key_ptr.*, kv.value_ptr.* });
+            }
+            std.debug.print("}}\n", .{});
+        }
         switch (root) {
             .list => |list| {
                 if (list.items.len == 0) {
@@ -155,6 +172,7 @@ pub const Environment = struct {
 
                 // function!
                 const new_list = try env.eval_ast(root, arena);
+                // const new_list = list;
                 // wow this turned awful fast huh
                 if (new_list == MalType.list) {
                     switch (new_list.list.items[0]) {
@@ -255,7 +273,7 @@ pub const Environment = struct {
                                 if (new_list.list.items[1] == .list) {
                                     return MalType{ .int = @intCast(i64, new_list.list.items[1].list.items.len) };
                                 } else {
-                                    return MalType{ .nil = {} };
+                                    return MalType{ .int = 0 };
                                 }
                             } else if (intrinsic == .eql) {
                                 const result = _ast.eql(
@@ -304,6 +322,7 @@ pub const Environment = struct {
                             }
                         },
                         .closure => |closure| {
+                            std.debug.print("CLOSURE\n", .{});
                             var new_env = Environment{
                                 .alloc = env.alloc,
                                 .symbol_table = std.StringHashMap(MalType).init(env.alloc),
@@ -313,6 +332,9 @@ pub const Environment = struct {
                             // for (closure.items[1..], new_list.list.items[1..]) |bind, item| {
                             // new_env.set(bind, item);
                             // }
+                            // ((
+                            // (fn* (a) (fn* (b) (+ a b)))
+                            // 5) 7)
                             var i: usize = 1;
                             var j: usize = 1;
                             while (i < closure.items.len and j < new_list.list.items.len) {
@@ -331,6 +353,9 @@ pub const Environment = struct {
                                     j += 1;
                                 }
                             }
+                            std.debug.print("evaluating in new env\n", .{});
+                            try _printer.print(env.out, closure.items[0]);
+                            std.debug.print("\n", .{});
                             return try new_env.eval(closure.items[0], arena);
                         },
                         else => {
@@ -350,6 +375,9 @@ pub const Environment = struct {
     }
 
     pub fn eval_ast(env: *Environment, root: MalType, arena: std.mem.Allocator) !MalType {
+        std.debug.print("EVAL_AST\n", .{});
+        try _printer.print(env.out, root);
+        std.debug.print("\n{*} {*}\n", .{ env, env.outer });
         switch (root) {
             .symbol => |symbol| {
                 _ = symbol;

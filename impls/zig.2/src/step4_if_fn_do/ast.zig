@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const _env = @import("env");
+
 pub const MalTypeType = enum {
     list,
     symbol,
@@ -41,6 +43,7 @@ pub const MalType = union(MalTypeType) {
     with_meta: void,
     intrinsic: Intrinsic,
     closure: std.ArrayList(MalType), // first item is the expression, following is the binds
+    // closure: Closure,
 };
 
 pub const Intrinsic = enum {
@@ -58,6 +61,12 @@ pub const Intrinsic = enum {
     leq,
     gt,
     geq,
+};
+
+pub const Closure = struct {
+    binds: std.ArrayList(MalType),
+    exec: MalType,
+    env: _env.Environment,
 };
 
 pub fn eql(a: MalType, b: MalType) bool {
