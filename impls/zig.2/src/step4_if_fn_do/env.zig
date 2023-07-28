@@ -352,16 +352,26 @@ pub const Environment = struct {
                             // 5) 7)
                             var i: usize = 1;
                             var j: usize = 1;
-                            while (i < closure.closure.items.len and j < new_list.list.items.len) {
-                                if (closure.closure.items[i] == .symbol and std.mem.eql(u8, closure.closure.items[i].symbol, "&")) {
+
+                            // for (new_list.list.items) |item| {
+                            // std.debug.print("{}\n", .{item});
+                            // }
+
+                            while (i < closure.closure.items.len) {
+                                if (closure.closure.items[i] == .symbol and
+                                    std.mem.eql(u8, closure.closure.items[i].symbol, "&"))
+                                {
+                                    // std.debug.print("variadic!\n", .{});
                                     i += 1;
                                     // variadic argument
                                     var varlist = MalType{ .list = std.ArrayList(MalType).init(env.alloc) };
-                                    for (new_list.list.items[j..]) |item| {
-                                        try varlist.list.append(item);
-                                        j += 1;
+                                    while (j < new_list.list.items.len) : (j += 1) {
+                                        // std.debug.print("{}\n", .{new_list.list.items[j]});
+                                        try varlist.list.append(new_list.list.items[j]);
                                     }
+                                    // std.debug.print("{}\n", .{closure.closure.items[i]});
                                     new_env.set(closure.closure.items[i], varlist);
+                                    i += 1;
                                 } else {
                                     new_env.set(closure.closure.items[i], new_list.list.items[j]);
                                     i += 1;

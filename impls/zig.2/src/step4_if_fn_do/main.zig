@@ -16,7 +16,7 @@ const MAL = struct {
     out: std.fs.File,
     env: Environment,
 
-    pub fn read(mal: *MAL, s: []u8, arena: std.mem.Allocator) !MalType {
+    pub fn read(mal: *MAL, s: []const u8, arena: std.mem.Allocator) !MalType {
         _ = mal;
         return try Reader.read(arena, s);
     }
@@ -29,7 +29,7 @@ const MAL = struct {
         try _printer.print(mal.out, ast);
     }
 
-    pub fn rep(mal: *MAL, s: []u8) !void {
+    pub fn rep(mal: *MAL, s: []const u8) !void {
         // using a memory arena is very handy here
         // since then cleaning up a mess of an ast full of
         // strings and array list is just a single call
@@ -77,6 +77,9 @@ pub fn main() !void {
 
     // try stdout.writeAll("Hello, world!\n");
     // try stdout.writer().print("number: {d}, string: {s}\n", .{ 42, "fourty-two" });
+
+    const fn_not = "(def! not (fn* (a) (if a false true)))";
+    try mal.rep(fn_not);
 
     while (true) {
         try stdout.writer().print("user> ", .{});

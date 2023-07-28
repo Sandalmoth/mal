@@ -88,5 +88,15 @@ pub fn eql(a: MalType, b: MalType) bool {
         return acc;
     }
 
+    if (a == .string and b == .string) {
+        return std.mem.eql(u8, a.string, b.string);
+    }
+    if (a == .symbol and b == .symbol) {
+        return std.mem.eql(u8, a.symbol, b.symbol);
+    }
+    if (a == .keyword and b == .keyword) {
+        return std.mem.eql(u8, a.keyword, b.keyword);
+    }
+
     return std.meta.eql(a, b);
 }
