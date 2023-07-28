@@ -56,7 +56,7 @@ pub fn main() !void {
         .alloc = alloc,
         .arena = arena.allocator(),
         .out = stdout,
-        .env = try Environment.init(alloc, stdout),
+        .env = try Environment.init(arena.allocator(), stdout),
     };
 
     try mal.env.symbol_table.put("+", MalType{ .intrinsic = .plus });

@@ -26,6 +26,7 @@ pub const Environment = struct {
 
     pub fn set(env: *Environment, key: MalType, value: MalType) void {
         // add to symbol tabble
+        // std.debug.print("{} kv {}\n", .{ key, value });
         switch (key) {
             .symbol => |symbol| {
                 env.symbol_table.put(env.alloc.dupe(u8, symbol) catch unreachable, value) catch unreachable;
@@ -61,34 +62,38 @@ pub const Environment = struct {
     pub fn find(env: *Environment, key: []const u8) ?*Environment {
         // find the environment a key is in
         // by walking out recursively
+
+        // std.debug.print("FIND {?*}\n", .{env});
+        // std.debug.print("{}\n", .{env.*});
         if (env.symbol_table.contains(key)) {
             return env;
         }
 
         if (env.outer) |parent| {
+            // std.debug.print("PARENT {?*}\n", .{env.outer});
             return parent.find(key);
         }
         return null;
     }
 
     pub fn eval(env: *Environment, root: MalType, arena: std.mem.Allocator) anyerror!MalType {
-        {
-            var kvit = env.symbol_table.iterator();
-            std.debug.print("{}\n", .{root});
-            if (root == .list) {
-                for (root.list.items) |item| {
-                    std.debug.print("  {}\n", .{item});
-                }
-            }
-            try _printer.print(env.out, root);
-            std.debug.print("\n", .{});
-            std.debug.print("{*} {*}\n", .{ env, env.outer });
-            std.debug.print("{{\n", .{});
-            while (kvit.next()) |kv| {
-                std.debug.print("  {s}: {},\n", .{ kv.key_ptr.*, kv.value_ptr.* });
-            }
-            std.debug.print("}}\n", .{});
-        }
+        // {
+        // var kvit = env.symbol_table.iterator();
+        // std.debug.print("{}\n", .{root});
+        // if (root == .list) {
+        // for (root.list.items) |item| {
+        // std.debug.print("  {}\n", .{item});
+        // }
+        // }
+        // try _printer.print(env.out, root);
+        // std.debug.print("\n", .{});
+        // std.debug.print("{*} {*}\n", .{ env, env.outer });
+        // std.debug.print("{{\n", .{});
+        // while (kvit.next()) |kv| {
+        // std.debug.print("  {s}: {},\n", .{ kv.key_ptr.*, kv.value_ptr.* });
+        // }
+        // std.debug.print("}}\n", .{});
+        // }
         switch (root) {
             .list => |list| {
                 if (list.items.len == 0) {
@@ -103,7 +108,6 @@ pub const Environment = struct {
                     return val; // NOTE is this the expected behaviour?
                 }
                 if (list.items[0] == .symbol and std.mem.eql(u8, list.items[0].symbol, "let*")) {
-                    // TODO
                     var new_env = Environment{
                         .alloc = env.alloc,
                         .symbol_table = std.StringHashMap(MalType).init(env.alloc),
@@ -157,15 +161,21 @@ pub const Environment = struct {
                     }
                 }
                 if (list.items[0] == .symbol and std.mem.eql(u8, list.items[0].symbol, "fn*")) {
+                    // var closure = try env.alloc.create(MalType);
+                    // var closure.* = MalType{
                     var closure = MalType{
-                        .closure = std.ArrayList(MalType).init(arena),
+                        .closure = _ast.Closure{
+                            .closure = std.ArrayList(MalType).init(arena),
+                            .env = env,
+                        },
                     };
-                    try closure.closure.append(list.items[2]);
+                    try closure.closure.closure.append(list.items[2]); // hell yeah closure!!!
                     if (list.items[1] == .list) {
                         for (list.items[1].list.items) |item| {
-                            try closure.closure.append(item);
+                            try closure.closure.closure.append(item);
                         }
-                        return closure;
+                        // std.debug.print("MADE A CLOSURE {}\n", .{closure.closure.env});
+                        return closure; //.*;
                     }
                     return error.BadFunctionDef;
                 }
@@ -322,13 +332,18 @@ pub const Environment = struct {
                             }
                         },
                         .closure => |closure| {
-                            std.debug.print("CLOSURE\n", .{});
-                            var new_env = Environment{
+                            // std.debug.print("CLOSURE\n", .{});
+                            // aww dammit there should be a compiler warning for returning locals...
+                            var new_env = try env.alloc.create(Environment);
+                            new_env.* = Environment{
                                 .alloc = env.alloc,
                                 .symbol_table = std.StringHashMap(MalType).init(env.alloc),
-                                .outer = env,
+                                .outer = closure.env,
                                 .out = env.out,
                             };
+                            // std.debug.print("{*} {*} {*}\n", .{ &new_env, new_env.outer, closure.env });
+                            // std.debug.print("{}\n", .{new_env});
+                            // std.debug.print("{}\n", .{new_env.outer.?});
                             // for (closure.items[1..], new_list.list.items[1..]) |bind, item| {
                             // new_env.set(bind, item);
                             // }
@@ -337,8 +352,8 @@ pub const Environment = struct {
                             // 5) 7)
                             var i: usize = 1;
                             var j: usize = 1;
-                            while (i < closure.items.len and j < new_list.list.items.len) {
-                                if (closure.items[i] == .symbol and std.mem.eql(u8, closure.items[i].symbol, "&")) {
+                            while (i < closure.closure.items.len and j < new_list.list.items.len) {
+                                if (closure.closure.items[i] == .symbol and std.mem.eql(u8, closure.closure.items[i].symbol, "&")) {
                                     i += 1;
                                     // variadic argument
                                     var varlist = MalType{ .list = std.ArrayList(MalType).init(env.alloc) };
@@ -346,17 +361,17 @@ pub const Environment = struct {
                                         try varlist.list.append(item);
                                         j += 1;
                                     }
-                                    new_env.set(closure.items[i], varlist);
+                                    new_env.set(closure.closure.items[i], varlist);
                                 } else {
-                                    new_env.set(closure.items[i], new_list.list.items[j]);
+                                    new_env.set(closure.closure.items[i], new_list.list.items[j]);
                                     i += 1;
                                     j += 1;
                                 }
                             }
-                            std.debug.print("evaluating in new env\n", .{});
-                            try _printer.print(env.out, closure.items[0]);
-                            std.debug.print("\n", .{});
-                            return try new_env.eval(closure.items[0], arena);
+                            // std.debug.print("evaluating in new env\n", .{});
+                            // try _printer.print(env.out, closure.closure.items[0]);
+                            // std.debug.print("\n", .{});
+                            return try new_env.eval(closure.closure.items[0], arena);
                         },
                         else => {
                             std.debug.print("{}\n", .{new_list.list.items[0]});
@@ -375,9 +390,9 @@ pub const Environment = struct {
     }
 
     pub fn eval_ast(env: *Environment, root: MalType, arena: std.mem.Allocator) !MalType {
-        std.debug.print("EVAL_AST\n", .{});
-        try _printer.print(env.out, root);
-        std.debug.print("\n{*} {*}\n", .{ env, env.outer });
+        // std.debug.print("EVAL_AST\n", .{});
+        // try _printer.print(env.out, root);
+        // std.debug.print("\n{*} {*}\n", .{ env, env.outer });
         switch (root) {
             .symbol => |symbol| {
                 _ = symbol;

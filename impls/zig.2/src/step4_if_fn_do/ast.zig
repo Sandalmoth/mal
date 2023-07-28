@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const _env = @import("env");
+const _env = @import("env.zig");
 
 pub const MalTypeType = enum {
     list,
@@ -42,8 +42,8 @@ pub const MalType = union(MalTypeType) {
     deref: void,
     with_meta: void,
     intrinsic: Intrinsic,
-    closure: std.ArrayList(MalType), // first item is the expression, following is the binds
-    // closure: Closure,
+    // closure: std.ArrayList(MalType), // first item is the expression, following is the binds
+    closure: Closure,
 };
 
 pub const Intrinsic = enum {
@@ -64,9 +64,8 @@ pub const Intrinsic = enum {
 };
 
 pub const Closure = struct {
-    binds: std.ArrayList(MalType),
-    exec: MalType,
-    env: _env.Environment,
+    closure: std.ArrayList(MalType), // first item is expression, rest are binds
+    env: *_env.Environment,
 };
 
 pub fn eql(a: MalType, b: MalType) bool {
