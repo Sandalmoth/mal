@@ -249,12 +249,6 @@ pub const Environment = struct {
                                     }
                                 }
                                 return MalType{ .int = acc };
-                            } else if (intrinsic == .prn) {
-                                if (new_list.list.items.len > 1) {
-                                    try _printer.print(env.out, new_list.list.items[1]);
-                                }
-                                try env.out.writer().print("\n", .{});
-                                return MalType{ .nil = {} };
                             } else if (intrinsic == .list) {
                                 var result = MalType{
                                     .list = std.ArrayList(MalType).init(env.alloc),
@@ -327,6 +321,53 @@ pub const Environment = struct {
                                 } else {
                                     return MalType{ .false = {} };
                                 }
+                            } else if (intrinsic == .pr_str) {
+                                var s: []u8 = "";
+                                for (new_list.list.items[1..], 0..) |item, i| {
+                                    if (i > 0) {
+                                        const ss: [2][]u8 = .{ s, _printer.pr_str(env.alloc, item, true) };
+                                        s = try std.mem.join(env.alloc, " ", &ss);
+                                    } else {
+                                        s = _printer.pr_str(env.alloc, item, true);
+                                    }
+                                }
+                                return MalType{ .string = s };
+                            } else if (intrinsic == .str) {
+                                var s: []u8 = "";
+                                for (new_list.list.items[1..]) |item| {
+                                    const ss: [2][]u8 = .{ s, _printer.pr_str(env.alloc, item, false) };
+                                    s = try std.mem.join(env.alloc, "", &ss);
+                                }
+                                return MalType{ .string = s };
+                            } else if (intrinsic == .prn) {
+                                var s: []u8 = "";
+                                for (new_list.list.items[1..], 0..) |item, i| {
+                                    if (i > 0) {
+                                        const ss: [2][]u8 = .{ s, _printer.pr_str(env.alloc, item, true) };
+                                        s = try std.mem.join(env.alloc, " ", &ss);
+                                    } else {
+                                        s = _printer.pr_str(env.alloc, item, true);
+                                    }
+                                }
+                                try env.out.writer().print("{s}\n", .{s});
+                                // if (new_list.list.items.len > 1) {
+                                //     try _printer.print(env.out, new_list.list.items[1]);
+                                // }
+                                // try env.out.writer().print("\n", .{});
+                                return MalType{ .nil = {} };
+                            } else if (intrinsic == .println) {
+                                var s: []u8 = "";
+                                for (new_list.list.items[1..], 0..) |item, i| {
+                                    if (i > 0) {
+                                        const ss: [2][]u8 = .{ s, _printer.pr_str(env.alloc, item, false) };
+                                        s = try std.mem.join(env.alloc, " ", &ss);
+                                    } else {
+                                        s = _printer.pr_str(env.alloc, item, true);
+                                    }
+                                }
+                                try env.out.writer().print("{s}\n", .{s});
+                                return MalType{ .nil = {} };
+                                //
                             } else {
                                 return error.UnimplementedIntrinsic;
                             }

@@ -64,7 +64,6 @@ pub fn main() !void {
     try mal.env.symbol_table.put("*", MalType{ .intrinsic = .mul });
     try mal.env.symbol_table.put("/", MalType{ .intrinsic = .div });
     // should these be intrinsics or special forms?
-    try mal.env.symbol_table.put("prn", MalType{ .intrinsic = .prn });
     try mal.env.symbol_table.put("list", MalType{ .intrinsic = .list });
     try mal.env.symbol_table.put("list?", MalType{ .intrinsic = .islist });
     try mal.env.symbol_table.put("empty?", MalType{ .intrinsic = .isempty });
@@ -74,6 +73,10 @@ pub fn main() !void {
     try mal.env.symbol_table.put("<=", MalType{ .intrinsic = .leq });
     try mal.env.symbol_table.put(">", MalType{ .intrinsic = .gt });
     try mal.env.symbol_table.put(">=", MalType{ .intrinsic = .geq });
+    try mal.env.symbol_table.put("pr-str", MalType{ .intrinsic = .pr_str });
+    try mal.env.symbol_table.put("str", MalType{ .intrinsic = .str });
+    try mal.env.symbol_table.put("prn", MalType{ .intrinsic = .prn });
+    try mal.env.symbol_table.put("println", MalType{ .intrinsic = .println });
 
     // try stdout.writeAll("Hello, world!\n");
     // try stdout.writer().print("number: {d}, string: {s}\n", .{ 42, "fourty-two" });

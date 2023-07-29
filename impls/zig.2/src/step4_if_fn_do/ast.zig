@@ -51,7 +51,6 @@ pub const Intrinsic = enum {
     minus,
     mul,
     div,
-    prn,
     list,
     islist,
     isempty,
@@ -61,6 +60,10 @@ pub const Intrinsic = enum {
     leq,
     gt,
     geq,
+    pr_str,
+    str,
+    prn,
+    println,
 };
 
 pub const Closure = struct {
