@@ -123,7 +123,21 @@ pub fn pr_str(alloc: std.mem.Allocator, node: MalType, readably: bool) []u8 {
             return std.fmt.allocPrint(alloc, "{}", .{int}) catch unreachable;
         },
         .string => |string| {
-            return std.fmt.allocPrint(alloc, "\"{s}\"", .{string}) catch unreachable;
+            if (readably) {
+                var buf = alloc.alloc(
+                    u8,
+                    std.mem.replacementSize(u8, string, "\\", "\\"),
+                ) catch unreachable;
+                _ = std.mem.replace(u8, string, "\\", "\\", buf);
+                var buf2 = alloc.alloc(
+                    u8,
+                    std.mem.replacementSize(u8, buf, "\"", "\\\""),
+                ) catch unreachable;
+                _ = std.mem.replace(u8, buf, "\"", "\\\"", buf2);
+                return std.fmt.allocPrint(alloc, "\"{s}\"", .{buf2}) catch unreachable;
+            } else {
+                return std.fmt.allocPrint(alloc, "\"{s}\"", .{string}) catch unreachable;
+            }
         },
         .nil => {
             return std.fmt.allocPrint(alloc, "nil", .{}) catch unreachable;
@@ -165,7 +179,7 @@ pub fn pr_str(alloc: std.mem.Allocator, node: MalType, readably: bool) []u8 {
                     s = pr_str(alloc, item, readably);
                 }
             }
-            return std.fmt.allocPrint(alloc, "({s})", .{s}) catch unreachable;
+            return std.fmt.allocPrint(alloc, "[{s}]", .{s}) catch unreachable;
         },
         .dict => |dict| {
             var s: []u8 = "";
@@ -177,7 +191,7 @@ pub fn pr_str(alloc: std.mem.Allocator, node: MalType, readably: bool) []u8 {
                     s = pr_str(alloc, item, readably);
                 }
             }
-            return std.fmt.allocPrint(alloc, "({s})", .{s}) catch unreachable;
+            return std.fmt.allocPrint(alloc, "{{{s}}}", .{s}) catch unreachable;
         },
         .intrinsic => |intrinsic| {
             switch (intrinsic) {

@@ -322,6 +322,7 @@ pub const Environment = struct {
                                     return MalType{ .false = {} };
                                 }
                             } else if (intrinsic == .pr_str) {
+                                // TODO DEFERRED FIXME
                                 var s: []u8 = "";
                                 for (new_list.list.items[1..], 0..) |item, i| {
                                     if (i > 0) {
@@ -331,8 +332,10 @@ pub const Environment = struct {
                                         s = _printer.pr_str(env.alloc, item, true);
                                     }
                                 }
+                                // std.debug.print("{s}\n", .{s});
                                 return MalType{ .string = s };
                             } else if (intrinsic == .str) {
+                                // TODO DEFERRED FIXME
                                 var s: []u8 = "";
                                 for (new_list.list.items[1..]) |item| {
                                     const ss: [2][]u8 = .{ s, _printer.pr_str(env.alloc, item, false) };
@@ -340,6 +343,7 @@ pub const Environment = struct {
                                 }
                                 return MalType{ .string = s };
                             } else if (intrinsic == .prn) {
+                                // TODO DEFERRED FIXME
                                 var s: []u8 = "";
                                 for (new_list.list.items[1..], 0..) |item, i| {
                                     if (i > 0) {
@@ -356,6 +360,7 @@ pub const Environment = struct {
                                 // try env.out.writer().print("\n", .{});
                                 return MalType{ .nil = {} };
                             } else if (intrinsic == .println) {
+                                // TODO DEFERRED FIXME
                                 var s: []u8 = "";
                                 for (new_list.list.items[1..], 0..) |item, i| {
                                     if (i > 0) {

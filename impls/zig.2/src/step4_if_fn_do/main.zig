@@ -36,8 +36,9 @@ const MAL = struct {
 
         const ast1 = try mal.read(s, mal.arena);
         const ast2 = try mal.eval(ast1, mal.arena);
-        try mal.print(ast2);
-        try mal.out.writer().print("\n", .{});
+        // try mal.print(ast2);
+        // try mal.out.writer().print("\n", .{});
+        try mal.out.writer().print("{s}\n", .{_printer.pr_str(mal.arena, ast2, true)});
     }
 };
 
